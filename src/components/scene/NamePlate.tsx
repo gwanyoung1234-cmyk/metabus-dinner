@@ -6,7 +6,7 @@ export function NamePlate({
   name,
   bubble,
   accent = "#fbbf24",
-  height = 2.55,
+  height = 2.35,
 }: {
   name: string;
   bubble?: string | null;
@@ -17,19 +17,55 @@ export function NamePlate({
     <Html
       position={[0, height, 0]}
       center
-      distanceFactor={11}
-      style={{ pointerEvents: "none", userSelect: "none", whiteSpace: "nowrap" }}
-      zIndexRange={[40, 0]}
+      zIndexRange={[160, 100]}
+      style={{
+        pointerEvents: "none",
+        userSelect: "none",
+        whiteSpace: "nowrap",
+      }}
     >
-      <div className="flex -translate-y-2 flex-col items-center gap-1.5">
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          transform: "translateY(-6px)",
+        }}
+      >
         {bubble ? (
-          <div className="max-w-[11rem] rounded-2xl rounded-bl-sm bg-white px-2.5 py-1.5 text-center text-[11px] font-medium leading-snug text-stone-800 shadow-lg">
+          <div
+            style={{
+              maxWidth: 180,
+              borderRadius: 14,
+              borderBottomLeftRadius: 4,
+              background: "#fff",
+              padding: "6px 10px",
+              textAlign: "center",
+              fontSize: 12,
+              fontWeight: 600,
+              lineHeight: 1.35,
+              color: "#292524",
+              boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+              whiteSpace: "normal",
+              wordBreak: "keep-all",
+            }}
+          >
             {bubble}
           </div>
         ) : null}
         <div
-          className="rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide text-white shadow-md"
-          style={{ background: "rgba(0,0,0,0.78)", border: `1px solid ${accent}` }}
+          style={{
+            borderRadius: 999,
+            padding: "5px 11px",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: "0.02em",
+            color: "#fff",
+            background: "rgba(0,0,0,0.84)",
+            border: `1.5px solid ${accent}`,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.45)",
+          }}
         >
           {name}
         </div>

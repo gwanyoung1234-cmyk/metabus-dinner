@@ -400,6 +400,7 @@ export function Avatar({
           name={name}
           bubble={speech}
           accent={isSelf ? "#fbbf24" : isFemale ? "#fb7185" : "#38bdf8"}
+          height={seated ? 2.05 : 2.35}
         />
       </group>
     </group>

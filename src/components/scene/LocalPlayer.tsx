@@ -18,13 +18,13 @@ import { Avatar } from "./Avatar";
 const SPEED = 4.2;
 const SEND_MS = 80;
 const ARRIVE = 0.18;
-const CAM_DIST = 5.8;
-const CAM_HEIGHT = 3.4;
+const CAM_DIST = 7.4;
+const CAM_HEIGHT = 4.0;
 const CAM_LOOK_Y = 1.15;
-const SEAT_CAM_DIST = 3.0;
-const SEAT_CAM_HEIGHT = 2.5;
-const ZOOM_MIN = 0.55;
-const ZOOM_MAX = 1.75;
+const SEAT_CAM_DIST = 4.6;
+const SEAT_CAM_HEIGHT = 2.9;
+const ZOOM_MIN = 0.7;
+const ZOOM_MAX = 1.55;
 
 function floorY(z: number) {
   return z < -3.7 ? RAISED_PLATFORM_Y : 0;
@@ -113,7 +113,9 @@ export function LocalPlayer({
   const pose = useRef({ x, z, rotationY });
   const camYaw = useRef(rotationY);
   const look = useRef({ x, y: CAM_LOOK_Y, z });
-  const zoom = useRef(1);
+  const zoom = useRef(
+    typeof window !== "undefined" && window.innerWidth < 768 ? 1.2 : 1.05,
+  );
   const seatOrbitYaw = useRef(0);
   const seatOrbitPitch = useRef(0.18);
   const dragging = useRef(false);

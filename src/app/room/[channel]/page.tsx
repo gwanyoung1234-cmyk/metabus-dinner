@@ -7,10 +7,9 @@ import { ActionBar } from "@/components/ui/ActionBar";
 import { ChatPanel } from "@/components/ui/ChatPanel";
 import { MenuModal } from "@/components/ui/MenuModal";
 import { MobileControls } from "@/components/ui/MobileControls";
-import { VoteModal } from "@/components/ui/VoteModal";
 import { getChannel, isChannelId } from "@/lib/channels";
 import { HANPANDER_LAYOUT, LOBSTER_SEAT_ID } from "@/lib/hanpanderSeats";
-import { getMenuItem, menuForChannel, type MenuId } from "@/lib/menu";
+import { menuForChannel, type MenuId } from "@/lib/menu";
 import { HALL_LAYOUT } from "@/lib/seats";
 import { getSocket } from "@/services/socket";
 import type { ChatMessage, HitEvent, PlayerGender, RoomState, ToastEvent } from "@/types/presence";
@@ -50,17 +49,11 @@ export default function ChannelRoomPage() {
   const [chats, setChats] = useState<ChatMessage[]>([]);
   const [speechById, setSpeechById] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const [voteOpen, setVoteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const me = useMemo(
     () => room.players.find((player) => player.id === selfId) ?? null,
     [room.players, selfId],
-  );
-
-  const myOrders = useMemo(
-    () => room.orders.filter((order) => order.playerId === selfId).slice(-4).reverse(),
-    [room.orders, selfId],
   );
 
   const seats = channel === "hanpander" ? HANPANDER_LAYOUT.seats : HALL_LAYOUT.seats;
@@ -95,9 +88,24 @@ export default function ChannelRoomPage() {
     };
     const onToast = (event: ToastEvent) => {
       setToasts((prev) => [event, ...prev].slice(0, 5));
+      window.setTimeout(() => {
+        setToasts((prev) => prev.filter((item) => item.at !== event.at || item.playerId !== event.playerId));
+      }, 3200);
     };
     const onHitFx = (event: HitEvent) => {
       setHitNotes((prev) => [event, ...prev].slice(0, 4));
+      window.setTimeout(() => {
+        setHitNotes((prev) =>
+          prev.filter(
+            (item) =>
+              !(
+                item.at === event.at &&
+                item.attackerId === event.attackerId &&
+                item.targetId === event.targetId
+              ),
+          ),
+        );
+      }, 2800);
     };
     const onChat = (message: ChatMessage) => {
       setChats((prev) => [...prev, message].slice(-40));
@@ -109,7 +117,7 @@ export default function ChannelRoomPage() {
           delete next[message.playerId];
           return next;
         });
-      }, 4500);
+      }, 4000);
     };
     const onError = (payload: { message: string }) => {
       setError(payload.message);
@@ -190,10 +198,6 @@ export default function ChannelRoomPage() {
     setMenuOpen(false);
   }
 
-  function castVote(choice: "yes" | "no") {
-    getSocket().emit("vote", { choice });
-  }
-
   function hitPlayer(targetId: string) {
     getSocket().emit("hit", { targetId });
   }
@@ -215,7 +219,7 @@ export default function ChannelRoomPage() {
 
   return (
     <main className="relative h-[100dvh] overflow-hidden">
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 overflow-visible [&_canvas]:touch-none">
         {isHanpander ? (
           <HanpanderHall
             players={room.players}
@@ -240,82 +244,16 @@ export default function ChannelRoomPage() {
         )}
       </div>
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4">
-        <div
-          className={`rounded-2xl border px-4 py-3 backdrop-blur ${
-            isHanpander
-              ? "border-emerald-900/40 bg-[rgba(8,18,14,0.78)]"
-              : "border-amber-900/40 bg-[rgba(18,12,8,0.78)]"
-          }`}
-        >
-          <p
-            className={`text-xs tracking-[0.18em] ${
-              isHanpander ? "text-emerald-300/90" : "text-fuchsia-300/90"
-            }`}
+      <header className="pointer-events-none absolute right-3 top-3 z-20 sm:right-4 sm:top-4">
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-900/40 bg-[rgba(18,12,8,0.82)] px-3 py-2 backdrop-blur">
+          <p className="text-xs font-medium text-amber-50">접속 {room.players.length}명</p>
+          <button
+            type="button"
+            className="pointer-events-auto rounded-lg border border-amber-800/50 px-2 py-1 text-[11px] text-amber-100/80"
+            onClick={() => router.push("/")}
           >
-            {channelDef.brand}
-          </p>
-          <h1 className="text-lg font-semibold text-amber-50">{channelDef.name}</h1>
-          <p className="mt-1 max-w-sm text-xs leading-5 text-amber-100/70">{room.stageMessage}</p>
-          <p className="mt-2 text-[11px] text-amber-200/70">
-            이동: WASD / 바닥 클릭 · 스크롤: 줌 · 앉으면 드래그로 둘러보기 · 때리기: 캐릭터 클릭
-          </p>
-          {myOrders.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-[11px] text-amber-100/75">
-              {myOrders.map((order) => (
-                <li key={order.id}>
-                  {getMenuItem(order.menuId).emoji} {getMenuItem(order.menuId).name}
-                  {" · "}
-                  {order.status === "queued"
-                    ? "대기"
-                    : order.status === "delivering"
-                      ? "배달 중"
-                      : "도착"}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-        <div className="space-y-2 text-right">
-          <div className="rounded-2xl border border-amber-900/40 bg-[rgba(18,12,8,0.78)] px-4 py-3 backdrop-blur">
-            <p className="text-xs text-amber-200/70">접속 {room.players.length}명</p>
-            <p className="text-sm font-medium text-amber-50">{me?.name ?? "..."}</p>
-            <ul className="mt-2 space-y-1 text-left text-[11px] text-amber-100/70">
-              {room.players.map((player) => (
-                <li key={player.id}>
-                  {player.id === selfId ? "★ " : "· "}
-                  {player.gender === "female" ? "♀ " : "♂ "}
-                  {player.name}
-                  {player.seatId ? " (착석)" : " (대기)"}
-                </li>
-              ))}
-              {isHanpander ? <li>· ♂ 랍스타 (NPC)</li> : <li>· ♂ 알바생 (NPC)</li>}
-            </ul>
-            <button
-              type="button"
-              className="pointer-events-auto mt-3 rounded-lg border border-amber-800/50 px-2 py-1 text-[11px] text-amber-100/80"
-              onClick={() => router.push("/")}
-            >
-              채널 나가기
-            </button>
-          </div>
-          {isHanpander ? (
-            <div className="rounded-2xl border border-red-900/40 bg-[rgba(40,10,10,0.78)] px-4 py-2 text-left text-[11px] text-red-50 backdrop-blur">
-              <p className="font-semibold text-red-200">랍스타</p>
-              <p className="mt-1 leading-4 text-red-50/85">
-                여기 고기 한판 더 시켜야지. 환풍기 소리 들리냐?
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-sky-900/40 bg-[rgba(10,20,40,0.78)] px-4 py-2 text-left text-[11px] text-sky-50 backdrop-blur">
-              <p className="font-semibold text-sky-200">알바생</p>
-              <p className="mt-1 leading-4 text-sky-50/85">
-                {room.delivery
-                  ? "주문 나르는 중이에요!"
-                  : "주문 주시면 바로 가져다 드릴게요."}
-              </p>
-            </div>
-          )}
+            나가기
+          </button>
         </div>
       </header>
 
@@ -358,12 +296,11 @@ export default function ChannelRoomPage() {
           onToast={() => sendAction("toast")}
           onGrill={() => sendAction("grill")}
           onOpenMenu={() => setMenuOpen(true)}
-          onOpenVote={() => setVoteOpen(true)}
         />
       </div>
 
       {error ? (
-        <div className="absolute left-1/2 top-24 z-30 -translate-x-1/2 rounded-xl bg-rose-900/90 px-4 py-2 text-sm text-rose-50">
+        <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2 rounded-xl bg-rose-900/90 px-4 py-2 text-sm text-rose-50">
           {error}
         </div>
       ) : null}
@@ -375,12 +312,6 @@ export default function ChannelRoomPage() {
         items={menuItems}
         onClose={() => setMenuOpen(false)}
         onOrder={placeOrder}
-      />
-      <VoteModal
-        open={voteOpen}
-        vote={room.vote}
-        onClose={() => setVoteOpen(false)}
-        onVote={castVote}
       />
     </main>
   );

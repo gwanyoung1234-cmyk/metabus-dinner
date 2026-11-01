@@ -229,7 +229,7 @@ export function DinnerHall({
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 4.5, 12], fov: 50, near: 0.1, far: 80 }}
+      camera={{ position: [0, 5.2, 13], fov: 58, near: 0.1, far: 80 }}
       className="h-full w-full"
       onPointerMissed={() => {
         // keep focus for keyboard after clicking empty space

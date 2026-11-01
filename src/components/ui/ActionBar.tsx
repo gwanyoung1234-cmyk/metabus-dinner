@@ -8,7 +8,6 @@ export function ActionBar({
   onToast,
   onGrill,
   onOpenMenu,
-  onOpenVote,
 }: {
   seated: boolean;
   showGrill?: boolean;
@@ -17,7 +16,6 @@ export function ActionBar({
   onToast: () => void;
   onGrill?: () => void;
   onOpenMenu: () => void;
-  onOpenVote: () => void;
 }) {
   const btn =
     "rounded-xl border border-amber-800/50 bg-black/45 px-3 py-2.5 text-xs font-semibold text-amber-50 backdrop-blur hover:bg-amber-900/40 disabled:cursor-not-allowed disabled:opacity-40";
@@ -37,9 +35,6 @@ export function ActionBar({
       ) : null}
       <button type="button" className={btn} disabled={!seated} onPointerDown={onToast}>
         건배 짠!
-      </button>
-      <button type="button" className={btn} onPointerDown={onOpenVote}>
-        2차 투표
       </button>
     </div>
   );

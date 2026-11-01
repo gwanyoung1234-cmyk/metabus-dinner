@@ -20,7 +20,7 @@ export const BOOR_CAM_BOUNDS: CamBounds = {
   minZ: -12.0,
   maxZ: 9.5,
   minY: 1.5,
-  maxY: 5.6,
+  maxY: 6.8,
 };
 
 export const BOOR_MOVE_BOUNDS: MoveBounds = {
@@ -45,7 +45,7 @@ export function fitCameraBehind(
   let z = pz - Math.cos(yaw) * dist;
   let y = py + preferredHeight;
 
-  for (let i = 0; i < 18 && dist > 2.2; i += 1) {
+  for (let i = 0; i < 18 && dist > 3.2; i += 1) {
     const outside =
       x < bounds.minX ||
       x > bounds.maxX ||

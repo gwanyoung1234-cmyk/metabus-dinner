@@ -118,7 +118,7 @@ export function WaiterNpc({
           <capsuleGeometry args={[0.07, 0.35, 4, 8]} />
           <meshStandardMaterial color="#0f172a" />
         </mesh>
-        <NamePlate name={name} bubble={bubble} accent="#38bdf8" />
+        <NamePlate name={name} bubble={bubble} accent="#38bdf8" height={2.2} />
         <group ref={tray} position={[0.4, 1.1, 0.12]} visible={false}>
           <mesh rotation={[0.2, 0, 0.35]}>
             <cylinderGeometry args={[0.2, 0.2, 0.04, 16]} />

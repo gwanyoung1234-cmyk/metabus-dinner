@@ -17,7 +17,7 @@ export function MobileControls() {
     "select-none touch-none rounded-2xl border border-amber-700/50 bg-black/55 px-4 py-3 text-sm font-bold text-amber-50 active:bg-amber-700/50";
 
   return (
-    <div className="pointer-events-auto absolute bottom-24 left-4 z-20 grid grid-cols-3 gap-1.5 md:hidden">
+    <div className="pointer-events-auto absolute bottom-24 right-3 z-20 grid grid-cols-3 gap-1.5 md:hidden">
       <span />
       <button
         type="button"

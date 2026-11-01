@@ -309,7 +309,7 @@ export function HanpanderHall({
   return (
     <Canvas
       shadows
-      camera={{ position: [8, 3.8, 11], fov: 50, near: 0.1, far: 80 }}
+      camera={{ position: [8, 4.6, 12], fov: 58, near: 0.1, far: 80 }}
       className="h-full w-full"
     >
       <Suspense fallback={null}>

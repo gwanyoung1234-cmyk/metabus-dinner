@@ -49,7 +49,7 @@ export const HANPANDER_CAM_BOUNDS = {
   minZ: -12.5,
   maxZ: 12.5,
   minY: 1.4,
-  maxY: 4.0,
+  maxY: 5.8,
 };
 
 export const HANPANDER_MOVE_BOUNDS = {

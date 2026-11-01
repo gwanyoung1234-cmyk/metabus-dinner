@@ -29,8 +29,8 @@ export function ChatPanel({
   }
 
   return (
-    <div className="pointer-events-auto absolute bottom-28 right-3 z-20 w-[min(92vw,18rem)]">
-      <div className="overflow-hidden rounded-2xl border border-amber-900/45 bg-[rgba(12,10,8,0.88)] shadow-xl backdrop-blur">
+    <div className="pointer-events-auto absolute bottom-[7.5rem] left-3 z-30 w-[min(72vw,17rem)] sm:bottom-28 md:left-4">
+      <div className="overflow-hidden rounded-2xl border border-amber-900/45 bg-[rgba(12,10,8,0.92)] shadow-xl backdrop-blur">
         <button
           type="button"
           className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-amber-100"
@@ -43,7 +43,7 @@ export function ChatPanel({
           <>
             <div
               ref={listRef}
-              className="max-h-40 space-y-1.5 overflow-y-auto border-t border-amber-900/30 px-3 py-2 text-[11px] leading-4 text-amber-50/90"
+              className="max-h-28 space-y-1.5 overflow-y-auto border-t border-amber-900/30 px-3 py-2 text-[11px] leading-4 text-amber-50/90 sm:max-h-36"
             >
               {messages.length === 0 ? (
                 <p className="text-amber-100/45">아직 대화가 없어요. 한마디 해보세요.</p>
