@@ -1,0 +1,40 @@
+{
+  "name": "metabus",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch server/combined.ts",
+    "dev:split": "concurrently -k -n web,socket -c cyan,magenta \"next dev --hostname 0.0.0.0 --port 3000\" \"tsx watch server/index.ts\"",
+    "dev:web": "next dev --hostname 0.0.0.0 --port 3000",
+    "dev:socket": "tsx watch server/index.ts",
+    "build": "next build",
+    "start": "tsx server/combined.ts",
+    "start:prod": "NODE_ENV=production tsx server/combined.ts",
+    "start:next": "next start",
+    "lint": "eslint",
+    "tunnel": "npx --yes cloudflared tunnel --url http://localhost:3000"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "next": "^16.3.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "three": "^0.181.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.181.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9",
+    "eslint-config-next": "^16.3.5",
+    "tailwindcss": "^4",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}

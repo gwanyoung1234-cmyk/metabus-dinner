@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #1a1410;
+  --fg: #f5efe6;
+  --accent: #d97706;
+  --panel: rgba(28, 20, 14, 0.78);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --font-sans: var(--font-geist-sans);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at top, #3b2416 0%, #120e0b 55%, #0a0807 100%);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), "Malgun Gothic", sans-serif;
+}

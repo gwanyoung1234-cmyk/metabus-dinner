@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: metabus-dinner
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npx tsx server/combined.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
