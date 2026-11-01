@@ -136,9 +136,11 @@ function HallEnvironment() {
 function RemotePlayers({
   players,
   selfId,
+  onHitPlayer,
 }: {
   players: PlayerState[];
   selfId: string | null;
+  onHitPlayer?: (targetId: string) => void;
 }) {
   const seatMap = useMemo(() => {
     return new Map(HALL_LAYOUT.seats.map((seat) => [seat.id, seat]));
@@ -148,6 +150,7 @@ function RemotePlayers({
     <>
       {players.map((player) => {
         if (player.id === selfId) return null;
+        const hit = onHitPlayer ? () => onHitPlayer(player.id) : undefined;
         if (player.seatId) {
           const seat = seatMap.get(player.seatId);
           if (!seat) return null;
@@ -161,6 +164,7 @@ function RemotePlayers({
               seated
               position={[seat.position[0], seat.position[1] + 0.42, seat.position[2]]}
               rotationY={seat.rotationY}
+              onHit={hit}
             />
           );
         }
@@ -177,6 +181,7 @@ function RemotePlayers({
             seated={false}
             position={[x, floorY(z), z]}
             rotationY={player.rotationY ?? Math.PI}
+            onHit={hit}
           />
         );
       })}
@@ -190,12 +195,14 @@ export function DinnerHall({
   orders,
   delivery,
   onSeatClick,
+  onHitPlayer,
 }: {
   players: PlayerState[];
   selfId: string | null;
   orders: OrderState[];
   delivery: DeliveryState | null;
   onSeatClick: (seatId: string) => void;
+  onHitPlayer?: (targetId: string) => void;
 }) {
   const me = useMemo(
     () => players.find((player) => player.id === selfId) ?? null,
@@ -225,8 +232,8 @@ export function DinnerHall({
       <Suspense fallback={null}>
         <HallEnvironment />
         <HallFurniture occupiedSeats={occupiedSeats} onSeatClick={onSeatClick} />
-        <ServedDishes orders={orders} />
-        <RemotePlayers players={players} selfId={selfId} />
+        <ServedDishes orders={orders} tables={HALL_LAYOUT.tables} />
+        <RemotePlayers players={players} selfId={selfId} onHitPlayer={onHitPlayer} />
         {me ? (
           <LocalPlayer
             name={me.name}

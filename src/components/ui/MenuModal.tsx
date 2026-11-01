@@ -1,13 +1,19 @@
 "use client";
 
-import { MENU, type MenuId } from "@/lib/menu";
+import type { MenuItem, MenuId } from "@/lib/menu";
 
 export function MenuModal({
   open,
+  title = "메뉴 주문",
+  brand = "MENU",
+  items,
   onClose,
   onOrder,
 }: {
   open: boolean;
+  title?: string;
+  brand?: string;
+  items: MenuItem[];
   onClose: () => void;
   onOrder: (menuId: MenuId) => void;
 }) {
@@ -18,16 +24,18 @@ export function MenuModal({
       <div className="w-full max-w-md rounded-2xl border border-amber-800/50 bg-[#1c140f] p-5 text-amber-50 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs tracking-[0.18em] text-fuchsia-300/90">BOOR MENU</p>
-            <h2 className="mt-1 text-lg font-semibold">메뉴 주문</h2>
-            <p className="mt-1 text-xs text-amber-100/65">앉은 자리에서만 주문할 수 있어요. 알바가 가져다줍니다.</p>
+            <p className="text-xs tracking-[0.18em] text-fuchsia-300/90">{brand}</p>
+            <h2 className="mt-1 text-lg font-semibold">{title}</h2>
+            <p className="mt-1 text-xs text-amber-100/65">
+              앉은 자리에서만 주문할 수 있어요. 알바가 가져다줍니다.
+            </p>
           </div>
           <button type="button" onClick={onClose} className="text-xs text-amber-200/60">
             닫기
           </button>
         </div>
         <ul className="mt-4 grid gap-2">
-          {MENU.map((item) => (
+          {items.map((item) => (
             <li key={item.id}>
               <button
                 type="button"

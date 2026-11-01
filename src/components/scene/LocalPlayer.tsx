@@ -1,6 +1,6 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import type { Group } from "three";
 import { RAISED_PLATFORM_Y } from "@/lib/seats";
@@ -9,11 +9,45 @@ import type { PlayerAction, PlayerGender } from "@/types/presence";
 import { Avatar } from "./Avatar";
 
 const SPEED = 4.2;
-const BOUNDS = { minX: -13.5, maxX: 13.5, minZ: -11.5, maxZ: 8.5 };
+const BOUNDS = { minX: -13.5, maxX: 14, minZ: -12, maxZ: 10 };
 const SEND_MS = 80;
+const ARRIVE = 0.18;
 
 function floorY(z: number) {
   return z < -3.7 ? RAISED_PLATFORM_Y : 0;
+}
+
+function FloorClickPads({
+  onFloorClick,
+}: {
+  onFloorClick: (x: number, z: number) => void;
+}) {
+  const handle = (event: ThreeEvent<PointerEvent>) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    onFloorClick(event.point.x, event.point.z);
+  };
+
+  return (
+    <>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.03, 1]}
+        onPointerDown={handle}
+      >
+        <planeGeometry args={[42, 28]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, RAISED_PLATFORM_Y + 0.03, -8.4]}
+        onPointerDown={handle}
+      >
+        <planeGeometry args={[28, 9.2]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </>
+  );
 }
 
 export function LocalPlayer({
@@ -39,8 +73,10 @@ export function LocalPlayer({
 }) {
   const root = useRef<Group>(null);
   const keys = useRef({ w: false, a: false, s: false, d: false });
+  const mouseGoal = useRef<{ x: number; z: number } | null>(null);
   const pose = useRef({ x, z, rotationY });
   const lastSent = useRef(0);
+  const movingRef = useRef(false);
 
   useEffect(() => {
     if (seated && seatPosition) {
@@ -49,6 +85,7 @@ export function LocalPlayer({
         z: seatPosition[2],
         rotationY: seatRotationY,
       };
+      mouseGoal.current = null;
       return;
     }
     pose.current = { x, z, rotationY };
@@ -61,6 +98,7 @@ export function LocalPlayer({
       const key = event.key.toLowerCase();
       if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
         event.preventDefault();
+        mouseGoal.current = null;
       }
       if (key === "w" || key === "arrowup") keys.current.w = true;
       if (key === "s" || key === "arrowdown") keys.current.s = true;
@@ -82,6 +120,15 @@ export function LocalPlayer({
     };
   }, []);
 
+  function onFloorClick(gx: number, gz: number) {
+    const tx = Math.min(BOUNDS.maxX, Math.max(BOUNDS.minX, gx));
+    const tz = Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, gz));
+    mouseGoal.current = { x: tx, z: tz };
+    if (seated) {
+      getSocket().emit("leaveSeat");
+    }
+  }
+
   useFrame((state, delta) => {
     if (!root.current) return;
     const camera = state.camera;
@@ -97,21 +144,39 @@ export function LocalPlayer({
       camera.lookAt(seatPosition[0], seatPosition[1] + 1.3, seatPosition[2]);
 
       const { w, a, s, d } = keys.current;
-      if (w || a || s || d) {
+      if (w || a || s || d || mouseGoal.current) {
         getSocket().emit("leaveSeat");
       }
+      movingRef.current = false;
       return;
     }
 
     const { w, a, s, d } = keys.current;
     let { x: px, z: pz, rotationY: rot } = pose.current;
+    let dx = 0;
+    let dz = 0;
+
     if (w || a || s || d) {
-      let dx = 0;
-      let dz = 0;
       if (w) dz -= 1;
       if (s) dz += 1;
       if (a) dx -= 1;
       if (d) dx += 1;
+    } else if (mouseGoal.current) {
+      const gx = mouseGoal.current.x - px;
+      const gz = mouseGoal.current.z - pz;
+      const dist = Math.hypot(gx, gz);
+      if (dist <= ARRIVE) {
+        mouseGoal.current = null;
+      } else {
+        dx = gx / dist;
+        dz = gz / dist;
+      }
+    }
+
+    const moving = Math.hypot(dx, dz) > 0;
+    movingRef.current = moving;
+
+    if (moving) {
       const len = Math.hypot(dx, dz) || 1;
       dx = (dx / len) * SPEED * delta;
       dz = (dz / len) * SPEED * delta;
@@ -140,16 +205,20 @@ export function LocalPlayer({
   });
 
   return (
-    <group ref={root}>
-      <Avatar
-        name={name}
-        gender={gender}
-        action={action}
-        isSelf
-        seated={seated}
-        position={[0, seated ? 0 : 0, 0]}
-        rotationY={0}
-      />
-    </group>
+    <>
+      <FloorClickPads onFloorClick={onFloorClick} />
+      <group ref={root}>
+        <Avatar
+          name={name}
+          gender={gender}
+          action={action}
+          isSelf
+          seated={seated}
+          movingRef={movingRef}
+          position={[0, 0, 0]}
+          rotationY={0}
+        />
+      </group>
+    </>
   );
 }
