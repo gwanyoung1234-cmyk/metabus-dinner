@@ -39,14 +39,8 @@ export function LobsterNpc({ onHit }: { onHit?: () => void }) {
           }, 920);
           onHit?.();
         }}
+        speech={hurting ? "아야! 왜 때려!" : "고기 한판 더?"}
       />
-      {/* Lobster badge */}
-      <mesh
-        position={[seat.position[0], seat.position[1] + 2.15, seat.position[2]]}
-      >
-        <boxGeometry args={[0.55, 0.16, 0.04]} />
-        <meshStandardMaterial color="#dc2626" emissive="#ef4444" emissiveIntensity={0.5} />
-      </mesh>
     </group>
   );
 }

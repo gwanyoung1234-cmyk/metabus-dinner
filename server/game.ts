@@ -28,18 +28,20 @@ const HIT_COOLDOWN_MS = 700;
 const KNOCKBACK = 1.35;
 
 const BOOR_SPAWN = { x: 0, z: 7.2, rotationY: Math.PI };
-const HANPANDER_SPAWN = { x: 5.2, z: 8.2, rotationY: Math.PI };
-const BOUNDS = { minX: -13.5, maxX: 14, minZ: -12, maxZ: 10 };
+const HANPANDER_SPAWN = { x: 7.2, z: 9.2, rotationY: Math.PI };
+const BOOR_BOUNDS = { minX: -13.5, maxX: 13.5, minZ: -11.5, maxZ: 8.5 };
+const HANPANDER_BOUNDS = { minX: -0.8, maxX: 12.2, minZ: -11.5, maxZ: 11.5 };
 
 type SocketData = {
   roomId: string;
   playerId: string;
 };
 
-function clampMove(x: number, z: number) {
+function clampMove(roomId: string, x: number, z: number) {
+  const bounds = roomId === "hanpander" ? HANPANDER_BOUNDS : BOOR_BOUNDS;
   return {
-    x: Math.min(BOUNDS.maxX, Math.max(BOUNDS.minX, x)),
-    z: Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, z)),
+    x: Math.min(bounds.maxX, Math.max(bounds.minX, x)),
+    z: Math.min(bounds.maxZ, Math.max(bounds.minZ, z)),
   };
 }
 
@@ -277,7 +279,7 @@ export function attachGameSocket(httpServer: HttpServer) {
         player.lastAction = "idle";
       }
 
-      const next = clampMove(x, z);
+      const next = clampMove(roomId, x, z);
       player.x = next.x;
       player.z = next.z;
       player.rotationY = rotationY;
@@ -298,6 +300,7 @@ export function attachGameSocket(httpServer: HttpServer) {
       player.lastAction = "idle";
       if (seat) {
         const next = clampMove(
+          roomId,
           seat.position[0] + Math.sin(seat.rotationY) * 0.7,
           seat.position[2] + Math.cos(seat.rotationY) * 0.7,
         );
@@ -490,6 +493,7 @@ export function attachGameSocket(httpServer: HttpServer) {
 
       const angle = Math.atan2(target.x - attacker.x, target.z - attacker.z);
       const knocked = clampMove(
+        roomId,
         target.x + Math.sin(angle) * KNOCKBACK,
         target.z + Math.cos(angle) * KNOCKBACK,
       );
@@ -499,7 +503,7 @@ export function attachGameSocket(httpServer: HttpServer) {
       target.lastAction = "hurt";
       attacker.lastAction = "punch";
       attacker.rotationY = angle;
-      room.stageMessage = `${attacker.name} 님이 ${target.name} 님을 때렸습니다!`;
+      room.stageMessage = `${attacker.name} 님이 ${target.name} 님 뒷통수를 후려쳤습니다!`;
 
       io.to(room.roomId).emit("hitFx", {
         attackerId: attacker.id,

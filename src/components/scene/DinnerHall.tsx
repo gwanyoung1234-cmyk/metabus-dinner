@@ -3,10 +3,10 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useMemo } from "react";
 import { DoubleSide } from "three";
+import { BOOR_CAM_BOUNDS, BOOR_MOVE_BOUNDS } from "@/lib/cameraBounds";
 import { HALL_LAYOUT, RAISED_PLATFORM_Y } from "@/lib/seats";
 import type { DeliveryState, OrderState, PlayerState } from "@/types/presence";
 import { Avatar } from "./Avatar";
-import { BossNpc } from "./BossNpc";
 import { HallFurniture } from "./HallFurniture";
 import { LocalPlayer } from "./LocalPlayer";
 import { ServedDishes } from "./ServedDishes";
@@ -137,10 +137,12 @@ function RemotePlayers({
   players,
   selfId,
   onHitPlayer,
+  speechById,
 }: {
   players: PlayerState[];
   selfId: string | null;
   onHitPlayer?: (targetId: string) => void;
+  speechById?: Record<string, string>;
 }) {
   const seatMap = useMemo(() => {
     return new Map(HALL_LAYOUT.seats.map((seat) => [seat.id, seat]));
@@ -151,6 +153,7 @@ function RemotePlayers({
       {players.map((player) => {
         if (player.id === selfId) return null;
         const hit = onHitPlayer ? () => onHitPlayer(player.id) : undefined;
+        const speech = speechById?.[player.id] ?? null;
         if (player.seatId) {
           const seat = seatMap.get(player.seatId);
           if (!seat) return null;
@@ -165,6 +168,7 @@ function RemotePlayers({
               position={[seat.position[0], seat.position[1] + 0.42, seat.position[2]]}
               rotationY={seat.rotationY}
               onHit={hit}
+              speech={speech}
             />
           );
         }
@@ -182,6 +186,7 @@ function RemotePlayers({
             position={[x, floorY(z), z]}
             rotationY={player.rotationY ?? Math.PI}
             onHit={hit}
+            speech={speech}
           />
         );
       })}
@@ -196,6 +201,7 @@ export function DinnerHall({
   delivery,
   onSeatClick,
   onHitPlayer,
+  speechById,
 }: {
   players: PlayerState[];
   selfId: string | null;
@@ -203,6 +209,7 @@ export function DinnerHall({
   delivery: DeliveryState | null;
   onSeatClick: (seatId: string) => void;
   onHitPlayer?: (targetId: string) => void;
+  speechById?: Record<string, string>;
 }) {
   const me = useMemo(
     () => players.find((player) => player.id === selfId) ?? null,
@@ -233,7 +240,12 @@ export function DinnerHall({
         <HallEnvironment />
         <HallFurniture occupiedSeats={occupiedSeats} onSeatClick={onSeatClick} />
         <ServedDishes orders={orders} tables={HALL_LAYOUT.tables} />
-        <RemotePlayers players={players} selfId={selfId} onHitPlayer={onHitPlayer} />
+        <RemotePlayers
+          players={players}
+          selfId={selfId}
+          onHitPlayer={onHitPlayer}
+          speechById={speechById}
+        />
         {me ? (
           <LocalPlayer
             name={me.name}
@@ -245,10 +257,12 @@ export function DinnerHall({
             x={me.x ?? 0}
             z={me.z ?? 7.2}
             rotationY={me.rotationY ?? Math.PI}
+            camBounds={BOOR_CAM_BOUNDS}
+            moveBounds={BOOR_MOVE_BOUNDS}
+            speech={speechById?.[me.id] ?? null}
           />
         ) : null}
-        <BossNpc />
-        <WaiterNpc delivery={delivery} />
+        <WaiterNpc delivery={delivery} name="알바생" />
       </Suspense>
     </Canvas>
   );

@@ -6,8 +6,6 @@ export function ActionBar({
   onSitNearest,
   onLeaveSeat,
   onToast,
-  onPour,
-  onSnack,
   onGrill,
   onOpenMenu,
   onOpenVote,
@@ -17,8 +15,6 @@ export function ActionBar({
   onSitNearest: () => void;
   onLeaveSeat: () => void;
   onToast: () => void;
-  onPour: () => void;
-  onSnack: () => void;
   onGrill?: () => void;
   onOpenMenu: () => void;
   onOpenVote: () => void;
@@ -41,12 +37,6 @@ export function ActionBar({
       ) : null}
       <button type="button" className={btn} disabled={!seated} onPointerDown={onToast}>
         건배 짠!
-      </button>
-      <button type="button" className={btn} disabled={!seated} onPointerDown={onPour}>
-        따르기
-      </button>
-      <button type="button" className={btn} disabled={!seated} onPointerDown={onSnack}>
-        안주
       </button>
       <button type="button" className={btn} onPointerDown={onOpenVote}>
         2차 투표

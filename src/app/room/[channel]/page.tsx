@@ -9,7 +9,6 @@ import { MenuModal } from "@/components/ui/MenuModal";
 import { MobileControls } from "@/components/ui/MobileControls";
 import { VoteModal } from "@/components/ui/VoteModal";
 import { getChannel, isChannelId } from "@/lib/channels";
-import { BOSS_LINES } from "@/lib/dialogue";
 import { HANPANDER_LAYOUT, LOBSTER_SEAT_ID } from "@/lib/hanpanderSeats";
 import { getMenuItem, menuForChannel, type MenuId } from "@/lib/menu";
 import { HALL_LAYOUT } from "@/lib/seats";
@@ -49,10 +48,10 @@ export default function ChannelRoomPage() {
   const [toasts, setToasts] = useState<ToastEvent[]>([]);
   const [hitNotes, setHitNotes] = useState<HitEvent[]>([]);
   const [chats, setChats] = useState<ChatMessage[]>([]);
+  const [speechById, setSpeechById] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [voteOpen, setVoteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [bossLine, setBossLine] = useState(BOSS_LINES[0]);
 
   const me = useMemo(
     () => room.players.find((player) => player.id === selfId) ?? null,
@@ -102,6 +101,15 @@ export default function ChannelRoomPage() {
     };
     const onChat = (message: ChatMessage) => {
       setChats((prev) => [...prev, message].slice(-40));
+      setSpeechById((prev) => ({ ...prev, [message.playerId]: message.text }));
+      window.setTimeout(() => {
+        setSpeechById((prev) => {
+          if (prev[message.playerId] !== message.text) return prev;
+          const next = { ...prev };
+          delete next[message.playerId];
+          return next;
+        });
+      }, 4500);
     };
     const onError = (payload: { message: string }) => {
       setError(payload.message);
@@ -127,16 +135,6 @@ export default function ChannelRoomPage() {
       socket.disconnect();
     };
   }, [channel, router]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setBossLine((current) => {
-        const idx = BOSS_LINES.indexOf(current);
-        return BOSS_LINES[(idx + 1) % BOSS_LINES.length] ?? BOSS_LINES[0];
-      });
-    }, 7000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   function sitNearby() {
     const socket = getSocket();
@@ -179,7 +177,7 @@ export default function ChannelRoomPage() {
     getSocket().emit("leaveSeat");
   }
 
-  function sendAction(type: "toast" | "pour" | "snack" | "grill") {
+  function sendAction(type: "toast" | "grill") {
     getSocket().emit("action", { type });
   }
 
@@ -227,6 +225,7 @@ export default function ChannelRoomPage() {
             onSeatClick={claimSeat}
             onHitPlayer={hitPlayer}
             onHitLobster={hitLobster}
+            speechById={speechById}
           />
         ) : (
           <DinnerHall
@@ -236,6 +235,7 @@ export default function ChannelRoomPage() {
             delivery={room.delivery}
             onSeatClick={claimSeat}
             onHitPlayer={hitPlayer}
+            speechById={speechById}
           />
         )}
       </div>
@@ -289,7 +289,7 @@ export default function ChannelRoomPage() {
                   {player.seatId ? " (착석)" : " (대기)"}
                 </li>
               ))}
-              {isHanpander ? <li>· ♂ 랍스타 (NPC)</li> : null}
+              {isHanpander ? <li>· ♂ 랍스타 (NPC)</li> : <li>· ♂ 알바생 (NPC)</li>}
             </ul>
             <button
               type="button"
@@ -299,16 +299,20 @@ export default function ChannelRoomPage() {
               채널 나가기
             </button>
           </div>
-          {!isHanpander ? (
-            <div className="rounded-2xl border border-rose-900/40 bg-[rgba(40,10,10,0.78)] px-4 py-2 text-left text-[11px] text-rose-50 backdrop-blur">
-              <p className="font-semibold text-rose-200">팀장님</p>
-              <p className="mt-1 leading-4 text-rose-50/85">{bossLine}</p>
-            </div>
-          ) : (
+          {isHanpander ? (
             <div className="rounded-2xl border border-red-900/40 bg-[rgba(40,10,10,0.78)] px-4 py-2 text-left text-[11px] text-red-50 backdrop-blur">
               <p className="font-semibold text-red-200">랍스타</p>
               <p className="mt-1 leading-4 text-red-50/85">
                 여기 고기 한판 더 시켜야지. 환풍기 소리 들리냐?
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-sky-900/40 bg-[rgba(10,20,40,0.78)] px-4 py-2 text-left text-[11px] text-sky-50 backdrop-blur">
+              <p className="font-semibold text-sky-200">알바생</p>
+              <p className="mt-1 leading-4 text-sky-50/85">
+                {room.delivery
+                  ? "주문 나르는 중이에요!"
+                  : "주문 주시면 바로 가져다 드릴게요."}
               </p>
             </div>
           )}
@@ -328,7 +332,8 @@ export default function ChannelRoomPage() {
               >
                 <span className="font-semibold text-rose-300">{hit.attackerName}</span>
                 {" → "}
-                <span className="font-semibold text-amber-200">{hit.targetName}</span> 강타!
+                <span className="font-semibold text-amber-200">{hit.targetName}</span>{" "}
+                뒷통수!
               </li>
             ))}
           </ul>
@@ -351,8 +356,6 @@ export default function ChannelRoomPage() {
           onSitNearest={sitNearby}
           onLeaveSeat={leaveSeat}
           onToast={() => sendAction("toast")}
-          onPour={() => sendAction("pour")}
-          onSnack={() => sendAction("snack")}
           onGrill={() => sendAction("grill")}
           onOpenMenu={() => setMenuOpen(true)}
           onOpenVote={() => setVoteOpen(true)}

@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useRef, type RefObject } from "react";
 import type { Group, Mesh } from "three";
 import type { PlayerAction, PlayerGender } from "@/types/presence";
+import { NamePlate } from "./NamePlate";
 
 function BeerGlass({
   position,
@@ -59,6 +60,7 @@ export function Avatar({
   moving = false,
   movingRef,
   onHit,
+  speech,
 }: {
   name: string;
   gender: PlayerGender;
@@ -70,6 +72,7 @@ export function Avatar({
   moving?: boolean;
   movingRef?: RefObject<boolean>;
   onHit?: () => void;
+  speech?: string | null;
 }) {
   const root = useRef<Group>(null);
   const hips = useRef<Group>(null);
@@ -80,6 +83,7 @@ export function Avatar({
   const leftFore = useRef<Mesh>(null);
   const rightFore = useRef<Mesh>(null);
   const glass = useRef<Group>(null);
+  const head = useRef<Group>(null);
   const prevXZ = useRef({ x: position[0], z: position[2] });
   const moveUntil = useRef(0);
   const bobPhase = phaseFromName(name);
@@ -115,27 +119,48 @@ export function Avatar({
       ? 0.52
       : 0.78 + (isMoving ? walkAbs * 0.045 : Math.sin(t * 3.2 + bobPhase) * 0.015);
     if (action === "hurt") {
-      hips.current.rotation.z = Math.sin(t * 28) * 0.22;
-      hips.current.rotation.x = -0.25;
+      // Hit on the back of the head — pitch forward hard.
+      hips.current.rotation.z = Math.sin(t * 20) * 0.08;
+      hips.current.rotation.x = 0.55 + Math.sin(t * 22) * 0.08;
+    } else if (action === "punch") {
+      hips.current.rotation.y = 0.45;
+      hips.current.rotation.z = -0.08;
+      hips.current.rotation.x = 0.05;
     } else if (action === "toast") {
       hips.current.rotation.z = Math.sin(t * 10) * 0.08;
       hips.current.rotation.x = 0;
+      hips.current.rotation.y = 0;
     } else {
       hips.current.rotation.z = 0;
       hips.current.rotation.x = 0;
+      hips.current.rotation.y = 0;
+    }
+
+    if (head.current) {
+      if (action === "hurt") {
+        head.current.rotation.x = 0.55 + Math.sin(t * 24) * 0.12;
+        head.current.rotation.z = Math.sin(t * 18) * 0.15;
+      } else {
+        head.current.rotation.x = 0;
+        head.current.rotation.z = 0;
+      }
     }
 
     if (leftArm.current && rightArm.current) {
       if (action === "punch") {
-        leftArm.current.rotation.x = 0.3;
-        rightArm.current.rotation.x = -1.75;
-        leftArm.current.rotation.z = 0.15;
-        rightArm.current.rotation.z = -0.05;
+        // Wind-up then chop the back of the head.
+        const chop = Math.sin(t * 16);
+        leftArm.current.rotation.x = 0.35;
+        leftArm.current.rotation.z = 0.25;
+        rightArm.current.rotation.x = -2.35 + chop * 1.15;
+        rightArm.current.rotation.z = -1.05 - chop * 0.25;
+        rightArm.current.rotation.y = 0.55;
       } else if (action === "hurt") {
-        leftArm.current.rotation.x = -0.8;
-        rightArm.current.rotation.x = -0.8;
-        leftArm.current.rotation.z = 0.55;
-        rightArm.current.rotation.z = -0.55;
+        leftArm.current.rotation.x = -1.1;
+        rightArm.current.rotation.x = -1.1;
+        leftArm.current.rotation.z = 0.7;
+        rightArm.current.rotation.z = -0.7;
+        rightArm.current.rotation.y = 0;
       } else if (action === "toast") {
         // Both arms thrust glass forward for 짠!
         const thrust = 0.55 + Math.sin(t * 14) * 0.12;
@@ -143,27 +168,32 @@ export function Avatar({
         rightArm.current.rotation.x = -1.25 - thrust * 0.2;
         leftArm.current.rotation.z = 0.35;
         rightArm.current.rotation.z = -0.35;
+        rightArm.current.rotation.y = 0;
       } else if (action === "grill") {
         leftArm.current.rotation.x = 0.2;
         rightArm.current.rotation.x = -1.1 + Math.sin(t * 12) * 0.35;
         leftArm.current.rotation.z = 0.15;
         rightArm.current.rotation.z = -0.25;
+        rightArm.current.rotation.y = 0;
       } else if (action === "pour") {
         leftArm.current.rotation.x = 0.2;
         rightArm.current.rotation.x = -0.9;
         leftArm.current.rotation.z = 0.15;
         rightArm.current.rotation.z = -0.55;
+        rightArm.current.rotation.y = 0;
       } else if (seated) {
         leftArm.current.rotation.x = 0.55;
         rightArm.current.rotation.x = 0.55;
         leftArm.current.rotation.z = 0.2;
         rightArm.current.rotation.z = -0.2;
+        rightArm.current.rotation.y = 0;
       } else {
         const swing = isMoving ? walk * 0.85 : Math.sin(t * 2 + bobPhase) * 0.06;
         leftArm.current.rotation.x = swing;
         rightArm.current.rotation.x = -swing;
         leftArm.current.rotation.z = 0.12;
         rightArm.current.rotation.z = -0.12;
+        rightArm.current.rotation.y = 0;
       }
     }
 
@@ -245,7 +275,7 @@ export function Avatar({
           </mesh>
 
           {/* Head */}
-          <group position={[0, 0.86, 0]}>
+          <group ref={head} position={[0, 0.86, 0]}>
             <mesh castShadow>
               <sphereGeometry args={[0.2, 18, 18]} />
               <meshStandardMaterial color={skinColor} roughness={0.7} />
@@ -295,15 +325,6 @@ export function Avatar({
               </mesh>
             )}
 
-            {/* Name marker */}
-            <mesh position={[0, 0.32, 0]}>
-              <sphereGeometry args={[0.055, 10, 10]} />
-              <meshStandardMaterial
-                color={isSelf ? "#fbbf24" : isFemale ? "#fb7185" : "#38bdf8"}
-                emissive={isSelf ? "#f59e0b" : isFemale ? "#be123c" : "#0284c7"}
-                emissiveIntensity={isSelf ? 0.9 : 0.35}
-              />
-            </mesh>
           </group>
 
           {/* Left arm */}
@@ -375,6 +396,11 @@ export function Avatar({
             </mesh>
           </group>
         </group>
+        <NamePlate
+          name={name}
+          bubble={speech}
+          accent={isSelf ? "#fbbf24" : isFemale ? "#fb7185" : "#38bdf8"}
+        />
       </group>
     </group>
   );
