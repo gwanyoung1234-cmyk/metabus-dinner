@@ -11,12 +11,15 @@ import { randomToastLine } from "../src/lib/dialogue";
 import type {
   ClientToServerEvents,
   DeliveryState,
+  GrillLevel,
   OrderState,
   PlayerState,
   RoomState,
   ServerToClientEvents,
   VoteState,
 } from "../src/types/presence";
+
+const GRILL_LABELS = ["생고기", "뒤집는 중", "알맞게", "잘 익음"] as const;
 
 const DEFAULT_ROOM = "boor";
 const DELIVERY_MS = 3600;
@@ -166,8 +169,13 @@ export function attachGameSocket(httpServer: HttpServer) {
       const order = current.orders.find((entry) => entry.id === next.id);
       if (order && order.status === "delivering") {
         order.status = "served";
-        const menuName = MENU.find((item) => item.id === order.menuId)?.name ?? "메뉴";
-        current.stageMessage = `${order.playerName} 님 테이블에 ${menuName} 도착!`;
+        const menu = MENU.find((item) => item.id === order.menuId);
+        if (menu?.kind === "meat") {
+          order.grillLevel = 0;
+          current.stageMessage = `${order.playerName} 님 테이블에 ${menu.name} 도착! 불판에서 구워 보세요.`;
+        } else {
+          current.stageMessage = `${order.playerName} 님 테이블에 ${menu?.name ?? "메뉴"} 도착!`;
+        }
       }
       current.delivery = null;
       emitRoom(current);
@@ -363,14 +371,48 @@ export function attachGameSocket(httpServer: HttpServer) {
         return;
       }
 
+      if (type === "grill") {
+        const tableId = player.seatId ? tableIdFromSeat(roomId, player.seatId) : null;
+        const meat = [...room.orders]
+          .reverse()
+          .find(
+            (order) =>
+              order.status === "served" &&
+              order.tableId === tableId &&
+              MENU.find((item) => item.id === order.menuId)?.kind === "meat" &&
+              (order.grillLevel ?? 0) < 3,
+          );
+        if (!meat) {
+          socket.emit("errorMessage", {
+            message: "구울 고기가 없어요. 먼저 고기를 주문하세요.",
+          });
+          return;
+        }
+        const nextLevel = ((meat.grillLevel ?? 0) + 1) as GrillLevel;
+        meat.grillLevel = nextLevel;
+        player.lastAction = "grill";
+        room.stageMessage = `${player.name} 님이 고기를 굽습니다 → ${GRILL_LABELS[nextLevel]}`;
+        emitRoom(room);
+        setTimeout(() => {
+          const current = rooms.get(roomId);
+          const target = current?.players.find((entry) => entry.id === socket.id);
+          if (!current || !target) return;
+          if (target.lastAction === "grill") {
+            target.lastAction = "idle";
+            emitRoom(current);
+          }
+        }, 1200);
+        return;
+      }
+
       player.lastAction = type;
       if (type === "toast") {
         player.toastCount += 1;
-        room.stageMessage = rankStageMessage(room);
+        room.stageMessage = `${player.name} 짠! — ${rankStageMessage(room)}`;
         io.to(room.roomId).emit("toast", {
           playerId: player.id,
           name: player.name,
-          line: randomToastLine(),
+          line: `짠! ${randomToastLine()}`,
           at: Date.now(),
         });
       } else if (type === "pour") {
@@ -389,7 +431,28 @@ export function attachGameSocket(httpServer: HttpServer) {
           target.lastAction = "idle";
           emitRoom(current);
         }
-      }, 1800);
+      }, type === "toast" ? 2200 : 1800);
+    });
+
+    socket.on("chat", ({ text }) => {
+      const roomId = socket.data.roomId;
+      if (!roomId) return;
+      const room = rooms.get(roomId);
+      if (!room) return;
+      const player = room.players.find((entry) => entry.id === socket.id);
+      if (!player) return;
+      const cleaned = String(text ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 80);
+      if (!cleaned) return;
+      io.to(room.roomId).emit("chat", {
+        id: `${socket.id}-${Date.now()}`,
+        playerId: player.id,
+        name: player.name,
+        text: cleaned,
+        at: Date.now(),
+      });
     });
 
     socket.on("hit", ({ targetId }) => {

@@ -5,11 +5,37 @@ import { useRef, type RefObject } from "react";
 import type { Group, Mesh } from "three";
 import type { PlayerAction, PlayerGender } from "@/types/presence";
 
+function BeerGlass({
+  position,
+  rotation,
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+}) {
+  return (
+    <group position={position} rotation={rotation ?? [0, 0, 0]}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.045, 0.055, 0.22, 12]} />
+        <meshStandardMaterial color="#fef3c7" transparent opacity={0.45} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, -0.02, 0]}>
+        <cylinderGeometry args={[0.04, 0.048, 0.14, 12]} />
+        <meshStandardMaterial color="#f59e0b" transparent opacity={0.85} emissive="#f59e0b" emissiveIntensity={0.35} />
+      </mesh>
+      <mesh position={[0, 0.1, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.03, 12]} />
+        <meshStandardMaterial color="#fff7ed" transparent opacity={0.35} />
+      </mesh>
+    </group>
+  );
+}
+
 const ACTION_TINT: Record<PlayerAction, string | null> = {
   idle: null,
   toast: "#f59e0b",
   pour: "#60a5fa",
   snack: "#34d399",
+  grill: "#ea580c",
   punch: "#f97316",
   hurt: "#ef4444",
 };
@@ -53,6 +79,7 @@ export function Avatar({
   const rightLeg = useRef<Group>(null);
   const leftFore = useRef<Mesh>(null);
   const rightFore = useRef<Mesh>(null);
+  const glass = useRef<Group>(null);
   const prevXZ = useRef({ x: position[0], z: position[2] });
   const moveUntil = useRef(0);
   const bobPhase = phaseFromName(name);
@@ -109,21 +136,28 @@ export function Avatar({
         rightArm.current.rotation.x = -0.8;
         leftArm.current.rotation.z = 0.55;
         rightArm.current.rotation.z = -0.55;
-      } else if (seated) {
-        leftArm.current.rotation.x = 0.55;
-        rightArm.current.rotation.x = 0.55;
-        leftArm.current.rotation.z = 0.2;
-        rightArm.current.rotation.z = -0.2;
       } else if (action === "toast") {
-        leftArm.current.rotation.x = walk * 0.5;
-        rightArm.current.rotation.x = -1.55 + Math.sin(t * 10) * 0.15;
-        leftArm.current.rotation.z = 0.12;
+        // Both arms thrust glass forward for 짠!
+        const thrust = 0.55 + Math.sin(t * 14) * 0.12;
+        leftArm.current.rotation.x = -1.15 - thrust * 0.15;
+        rightArm.current.rotation.x = -1.25 - thrust * 0.2;
+        leftArm.current.rotation.z = 0.35;
         rightArm.current.rotation.z = -0.35;
+      } else if (action === "grill") {
+        leftArm.current.rotation.x = 0.2;
+        rightArm.current.rotation.x = -1.1 + Math.sin(t * 12) * 0.35;
+        leftArm.current.rotation.z = 0.15;
+        rightArm.current.rotation.z = -0.25;
       } else if (action === "pour") {
         leftArm.current.rotation.x = 0.2;
         rightArm.current.rotation.x = -0.9;
         leftArm.current.rotation.z = 0.15;
         rightArm.current.rotation.z = -0.55;
+      } else if (seated) {
+        leftArm.current.rotation.x = 0.55;
+        rightArm.current.rotation.x = 0.55;
+        leftArm.current.rotation.z = 0.2;
+        rightArm.current.rotation.z = -0.2;
       } else {
         const swing = isMoving ? walk * 0.85 : Math.sin(t * 2 + bobPhase) * 0.06;
         leftArm.current.rotation.x = swing;
@@ -134,9 +168,21 @@ export function Avatar({
     }
 
     if (leftFore.current && rightFore.current) {
-      leftFore.current.rotation.x = seated || action === "toast" ? 0.35 : isMoving ? 0.25 : 0.15;
+      leftFore.current.rotation.x =
+        action === "toast" ? 0.55 : seated ? 0.35 : isMoving ? 0.25 : 0.15;
       rightFore.current.rotation.x =
-        action === "toast" ? 0.2 : seated ? 0.35 : isMoving ? 0.25 : 0.15;
+        action === "toast" ? 0.45 : seated ? 0.35 : isMoving ? 0.25 : 0.15;
+    }
+
+    if (glass.current) {
+      if (action === "toast") {
+        const pulse = Math.sin(t * 14) * 0.08;
+        glass.current.position.set(0.02, -0.62 + pulse, 0.28 + Math.abs(pulse));
+        glass.current.rotation.set(-0.85 + pulse, 0.1, 0.2);
+      } else {
+        glass.current.position.set(0.02, -0.72, 0.08);
+        glass.current.rotation.set(0.2, 0, 0.15);
+      }
     }
 
     if (leftLeg.current && rightLeg.current) {
@@ -291,10 +337,9 @@ export function Avatar({
               <meshStandardMaterial color={skinColor} roughness={0.7} />
             </mesh>
             {action === "toast" ? (
-              <mesh position={[0.02, -0.72, 0.08]} rotation={[0.2, 0, 0.15]}>
-                <cylinderGeometry args={[0.045, 0.06, 0.26, 10]} />
-                <meshStandardMaterial color="#fde68a" emissive="#f59e0b" emissiveIntensity={0.4} />
-              </mesh>
+              <group ref={glass}>
+                <BeerGlass position={[0, 0, 0]} />
+              </group>
             ) : null}
           </group>
 

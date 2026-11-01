@@ -6,6 +6,7 @@ import { DoubleSide } from "three";
 import { HANPANDER_LAYOUT, LOBSTER_SEAT_ID } from "@/lib/hanpanderSeats";
 import type { DeliveryState, OrderState, PlayerState } from "@/types/presence";
 import { Avatar } from "./Avatar";
+import { GrillStation } from "./GrillStation";
 import { LocalPlayer } from "./LocalPlayer";
 import { LobsterNpc } from "./LobsterNpc";
 import { ServedDishes } from "./ServedDishes";
@@ -305,6 +306,7 @@ export function HanpanderHall({
           />
         ))}
         <ServedDishes orders={orders} tables={HANPANDER_LAYOUT.tables} />
+        <GrillStation orders={orders} tables={HANPANDER_LAYOUT.tables} />
         <RemotePlayers players={players} selfId={selfId} onHitPlayer={onHitPlayer} />
         <LobsterNpc onHit={onHitLobster} />
         {me ? (

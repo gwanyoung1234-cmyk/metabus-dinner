@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ActionBar } from "@/components/ui/ActionBar";
+import { ChatPanel } from "@/components/ui/ChatPanel";
 import { MenuModal } from "@/components/ui/MenuModal";
 import { MobileControls } from "@/components/ui/MobileControls";
 import { VoteModal } from "@/components/ui/VoteModal";
@@ -13,7 +14,7 @@ import { HANPANDER_LAYOUT, LOBSTER_SEAT_ID } from "@/lib/hanpanderSeats";
 import { getMenuItem, menuForChannel, type MenuId } from "@/lib/menu";
 import { HALL_LAYOUT } from "@/lib/seats";
 import { getSocket } from "@/services/socket";
-import type { HitEvent, PlayerGender, RoomState, ToastEvent } from "@/types/presence";
+import type { ChatMessage, HitEvent, PlayerGender, RoomState, ToastEvent } from "@/types/presence";
 
 const DinnerHall = dynamic(
   () => import("@/components/scene/DinnerHall").then((mod) => mod.DinnerHall),
@@ -47,6 +48,7 @@ export default function ChannelRoomPage() {
   const [room, setRoom] = useState<RoomState>(EMPTY_ROOM);
   const [toasts, setToasts] = useState<ToastEvent[]>([]);
   const [hitNotes, setHitNotes] = useState<HitEvent[]>([]);
+  const [chats, setChats] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [voteOpen, setVoteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -98,6 +100,9 @@ export default function ChannelRoomPage() {
     const onHitFx = (event: HitEvent) => {
       setHitNotes((prev) => [event, ...prev].slice(0, 4));
     };
+    const onChat = (message: ChatMessage) => {
+      setChats((prev) => [...prev, message].slice(-40));
+    };
     const onError = (payload: { message: string }) => {
       setError(payload.message);
       window.setTimeout(() => setError(null), 2400);
@@ -107,6 +112,7 @@ export default function ChannelRoomPage() {
     socket.on("roomState", onRoomState);
     socket.on("toast", onToast);
     socket.on("hitFx", onHitFx);
+    socket.on("chat", onChat);
     socket.on("errorMessage", onError);
     if (socket.connected) onConnect();
     else socket.connect();
@@ -116,6 +122,7 @@ export default function ChannelRoomPage() {
       socket.off("roomState", onRoomState);
       socket.off("toast", onToast);
       socket.off("hitFx", onHitFx);
+      socket.off("chat", onChat);
       socket.off("errorMessage", onError);
       socket.disconnect();
     };
@@ -172,8 +179,12 @@ export default function ChannelRoomPage() {
     getSocket().emit("leaveSeat");
   }
 
-  function sendAction(type: "toast" | "pour" | "snack") {
+  function sendAction(type: "toast" | "pour" | "snack" | "grill") {
     getSocket().emit("action", { type });
+  }
+
+  function sendChat(text: string) {
+    getSocket().emit("chat", { text });
   }
 
   function placeOrder(menuId: MenuId) {
@@ -247,7 +258,7 @@ export default function ChannelRoomPage() {
           <h1 className="text-lg font-semibold text-amber-50">{channelDef.name}</h1>
           <p className="mt-1 max-w-sm text-xs leading-5 text-amber-100/70">{room.stageMessage}</p>
           <p className="mt-2 text-[11px] text-amber-200/70">
-            이동: WASD / 바닥 클릭 · 앉기: 의자 클릭 · 때리기: 상대 캐릭터 클릭
+            이동: WASD / 바닥 클릭 · 앉기: 의자 · 때리기: 캐릭터 클릭 · 채팅창으로 대화
           </p>
           {myOrders.length > 0 ? (
             <ul className="mt-2 space-y-1 text-[11px] text-amber-100/75">
@@ -305,6 +316,7 @@ export default function ChannelRoomPage() {
       </header>
 
       <MobileControls />
+      <ChatPanel messages={chats} onSend={sendChat} />
 
       <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 w-[min(92vw,44rem)] -translate-x-1/2 space-y-3">
         {hitNotes.length > 0 ? (
@@ -335,11 +347,13 @@ export default function ChannelRoomPage() {
         ) : null}
         <ActionBar
           seated={Boolean(me?.seatId)}
+          showGrill={isHanpander}
           onSitNearest={sitNearby}
           onLeaveSeat={leaveSeat}
           onToast={() => sendAction("toast")}
           onPour={() => sendAction("pour")}
           onSnack={() => sendAction("snack")}
+          onGrill={() => sendAction("grill")}
           onOpenMenu={() => setMenuOpen(true)}
           onOpenVote={() => setVoteOpen(true)}
         />

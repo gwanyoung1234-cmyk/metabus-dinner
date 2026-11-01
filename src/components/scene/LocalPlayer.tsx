@@ -12,9 +12,21 @@ const SPEED = 4.2;
 const BOUNDS = { minX: -13.5, maxX: 14, minZ: -12, maxZ: 10 };
 const SEND_MS = 80;
 const ARRIVE = 0.18;
+const CAM_DIST = 7.2;
+const CAM_HEIGHT = 4.0;
+const CAM_LOOK_Y = 1.15;
+const SEAT_CAM_DIST = 3.2;
+const SEAT_CAM_HEIGHT = 2.6;
 
 function floorY(z: number) {
   return z < -3.7 ? RAISED_PLATFORM_Y : 0;
+}
+
+function lerpAngle(from: number, to: number, t: number) {
+  let diff = to - from;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return from + diff * t;
 }
 
 function FloorClickPads({
@@ -75,9 +87,13 @@ export function LocalPlayer({
   const keys = useRef({ w: false, a: false, s: false, d: false });
   const mouseGoal = useRef<{ x: number; z: number } | null>(null);
   const pose = useRef({ x, z, rotationY });
+  const camYaw = useRef(rotationY);
+  const look = useRef({ x, y: CAM_LOOK_Y, z });
   const lastSent = useRef(0);
   const movingRef = useRef(false);
+  const wasSeated = useRef(seated);
 
+  // Local player is authority while walking — only adopt server pose when stand/sit changes.
   useEffect(() => {
     if (seated && seatPosition) {
       pose.current = {
@@ -85,11 +101,15 @@ export function LocalPlayer({
         z: seatPosition[2],
         rotationY: seatRotationY,
       };
+      camYaw.current = seatRotationY;
       mouseGoal.current = null;
-      return;
+      movingRef.current = false;
+    } else if (wasSeated.current && !seated) {
+      pose.current = { x, z, rotationY };
+      camYaw.current = rotationY;
     }
-    pose.current = { x, z, rotationY };
-  }, [x, z, rotationY, seated, seatPosition, seatRotationY]);
+    wasSeated.current = seated;
+  }, [seated, seatPosition, seatRotationY, x, z, rotationY]);
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -132,19 +152,36 @@ export function LocalPlayer({
   useFrame((state, delta) => {
     if (!root.current) return;
     const camera = state.camera;
+    const dt = Math.min(delta, 0.05);
+    const follow = 1 - Math.exp(-3.2 * dt);
+    const yawFollow = 1 - Math.exp(-2.4 * dt);
 
     if (seated && seatPosition) {
+      // Leftover click-to-move must not instantly stand us back up.
+      mouseGoal.current = null;
       root.current.position.set(seatPosition[0], seatPosition[1] + 0.42, seatPosition[2]);
       root.current.rotation.y = seatRotationY;
-      const camX = seatPosition[0] - Math.sin(seatRotationY) * 5.5;
-      const camZ = seatPosition[2] - Math.cos(seatRotationY) * 5.5;
-      camera.position.x += (camX - camera.position.x) * 0.08;
-      camera.position.y += (seatPosition[1] + 3.6 - camera.position.y) * 0.08;
-      camera.position.z += (camZ - camera.position.z) * 0.08;
-      camera.lookAt(seatPosition[0], seatPosition[1] + 1.3, seatPosition[2]);
+
+      // Short over-the-shoulder view — avoids clipping into tables/walls.
+      const faceX = Math.sin(seatRotationY);
+      const faceZ = Math.cos(seatRotationY);
+      const targetCamX = seatPosition[0] - faceX * SEAT_CAM_DIST;
+      const targetCamZ = seatPosition[2] - faceZ * SEAT_CAM_DIST;
+      const targetCamY = Math.min(5.4, seatPosition[1] + SEAT_CAM_HEIGHT);
+      const lookX = seatPosition[0] + faceX * 0.9;
+      const lookY = seatPosition[1] + 1.15;
+      const lookZ = seatPosition[2] + faceZ * 0.9;
+
+      camera.position.x += (targetCamX - camera.position.x) * follow;
+      camera.position.y += (targetCamY - camera.position.y) * follow;
+      camera.position.z += (targetCamZ - camera.position.z) * follow;
+      look.current.x += (lookX - look.current.x) * follow;
+      look.current.y += (lookY - look.current.y) * follow;
+      look.current.z += (lookZ - look.current.z) * follow;
+      camera.lookAt(look.current.x, look.current.y, look.current.z);
 
       const { w, a, s, d } = keys.current;
-      if (w || a || s || d || mouseGoal.current) {
+      if (w || a || s || d) {
         getSocket().emit("leaveSeat");
       }
       movingRef.current = false;
@@ -178,8 +215,8 @@ export function LocalPlayer({
 
     if (moving) {
       const len = Math.hypot(dx, dz) || 1;
-      dx = (dx / len) * SPEED * delta;
-      dz = (dz / len) * SPEED * delta;
+      dx = (dx / len) * SPEED * dt;
+      dz = (dz / len) * SPEED * dt;
       px = Math.min(BOUNDS.maxX, Math.max(BOUNDS.minX, px + dx));
       pz = Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, pz + dz));
       rot = Math.atan2(dx, dz);
@@ -196,12 +233,23 @@ export function LocalPlayer({
     root.current.position.set(pose.current.x, y, pose.current.z);
     root.current.rotation.y = pose.current.rotationY;
 
-    const camX = pose.current.x - Math.sin(pose.current.rotationY) * 6.5;
-    const camZ = pose.current.z - Math.cos(pose.current.rotationY) * 6.5;
-    camera.position.x += (camX - camera.position.x) * 0.1;
-    camera.position.y += (y + 4.2 - camera.position.y) * 0.1;
-    camera.position.z += (camZ - camera.position.z) * 0.1;
-    camera.lookAt(pose.current.x, y + 1.2, pose.current.z);
+    // Smooth camera yaw so strafing/turns don't whip the view.
+    camYaw.current = lerpAngle(camYaw.current, pose.current.rotationY, moving ? yawFollow : yawFollow * 0.35);
+
+    const targetCamX = pose.current.x - Math.sin(camYaw.current) * CAM_DIST;
+    const targetCamZ = pose.current.z - Math.cos(camYaw.current) * CAM_DIST;
+    const targetCamY = y + CAM_HEIGHT;
+    const lookX = pose.current.x;
+    const lookY = y + CAM_LOOK_Y;
+    const lookZ = pose.current.z;
+
+    camera.position.x += (targetCamX - camera.position.x) * follow;
+    camera.position.y += (targetCamY - camera.position.y) * follow;
+    camera.position.z += (targetCamZ - camera.position.z) * follow;
+    look.current.x += (lookX - look.current.x) * follow;
+    look.current.y += (lookY - look.current.y) * follow;
+    look.current.z += (lookZ - look.current.z) * follow;
+    camera.lookAt(look.current.x, look.current.y, look.current.z);
   });
 
   return (

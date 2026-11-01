@@ -1,8 +1,17 @@
 import type { MenuId } from "@/lib/menu";
 
-export type PlayerAction = "idle" | "toast" | "pour" | "snack" | "punch" | "hurt";
+export type PlayerAction =
+  | "idle"
+  | "toast"
+  | "pour"
+  | "snack"
+  | "grill"
+  | "punch"
+  | "hurt";
 export type PlayerGender = "male" | "female";
 export type OrderStatus = "queued" | "delivering" | "served";
+/** 0 raw → 1 flipping → 2 medium → 3 well / done */
+export type GrillLevel = 0 | 1 | 2 | 3;
 
 export interface PlayerState {
   id: string;
@@ -32,6 +41,7 @@ export interface OrderState {
   tableId: string;
   status: OrderStatus;
   at: number;
+  grillLevel?: GrillLevel;
 }
 
 export interface DeliveryState {
@@ -69,20 +79,32 @@ export interface HitEvent {
   at: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  name: string;
+  text: string;
+  at: number;
+}
+
 export type ClientToServerEvents = {
   join: (payload: { roomId: string; name: string; gender: PlayerGender }) => void;
   move: (payload: { x: number; z: number; rotationY: number }) => void;
   claimSeat: (payload: { seatId: string }) => void;
   leaveSeat: () => void;
-  action: (payload: { type: Exclude<PlayerAction, "idle" | "hurt" | "punch"> }) => void;
+  action: (payload: {
+    type: Exclude<PlayerAction, "idle" | "hurt" | "punch">;
+  }) => void;
   order: (payload: { menuId: MenuId }) => void;
   vote: (payload: { choice: "yes" | "no" }) => void;
   hit: (payload: { targetId: string }) => void;
+  chat: (payload: { text: string }) => void;
 };
 
 export type ServerToClientEvents = {
   roomState: (state: RoomState) => void;
   toast: (event: ToastEvent) => void;
   hitFx: (event: HitEvent) => void;
+  chat: (message: ChatMessage) => void;
   errorMessage: (payload: { message: string }) => void;
 };

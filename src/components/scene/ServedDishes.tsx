@@ -111,32 +111,6 @@ function ChickenPlate({ menuId, offset }: { menuId: MenuId; offset: number }) {
   );
 }
 
-function MeatPlate({ menuId, offset }: { menuId: MenuId; offset: number }) {
-  const item = getMenuItem(menuId);
-  const x = ((offset % 3) - 1) * 0.36;
-  const z = Math.floor(offset / 3) * 0.3 - 0.1;
-
-  return (
-    <group position={[x, 0.05, z]}>
-      <mesh castShadow>
-        <boxGeometry args={[0.32, 0.02, 0.24]} />
-        <meshStandardMaterial color="#e5e7eb" metalness={0.4} roughness={0.35} />
-      </mesh>
-      {[0, 1, 2].map((i) => (
-        <mesh
-          key={i}
-          position={[(i - 1) * 0.07, 0.04, (i % 2) * 0.04 - 0.02]}
-          rotation={[0.1, 0.2 * i, 0.05]}
-          castShadow
-        >
-          <boxGeometry args={[0.1, 0.035, 0.07]} />
-          <meshStandardMaterial color={item.color} roughness={0.55} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 function DrinkMesh({ menuId, offset }: { menuId: MenuId; offset: number }) {
   const item = getMenuItem(menuId);
   const x = ((offset % 3) - 1) * 0.35;
@@ -172,7 +146,8 @@ function DrinkMesh({ menuId, offset }: { menuId: MenuId; offset: number }) {
 function DishMesh({ menuId, offset }: { menuId: MenuId; offset: number }) {
   const item = getMenuItem(menuId);
   if (item.kind === "drink") return <DrinkMesh menuId={menuId} offset={offset} />;
-  if (item.kind === "meat") return <MeatPlate menuId={menuId} offset={offset} />;
+  // Meat is cooked on the grill station instead of a static plate.
+  if (item.kind === "meat") return null;
   return <ChickenPlate menuId={menuId} offset={offset} />;
 }
 

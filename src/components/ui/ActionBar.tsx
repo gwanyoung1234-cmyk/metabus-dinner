@@ -2,20 +2,24 @@
 
 export function ActionBar({
   seated,
+  showGrill,
   onSitNearest,
   onLeaveSeat,
   onToast,
   onPour,
   onSnack,
+  onGrill,
   onOpenMenu,
   onOpenVote,
 }: {
   seated: boolean;
+  showGrill?: boolean;
   onSitNearest: () => void;
   onLeaveSeat: () => void;
   onToast: () => void;
   onPour: () => void;
   onSnack: () => void;
+  onGrill?: () => void;
   onOpenMenu: () => void;
   onOpenVote: () => void;
 }) {
@@ -30,8 +34,13 @@ export function ActionBar({
       <button type="button" className={btn} disabled={!seated} onPointerDown={onOpenMenu}>
         메뉴 주문
       </button>
+      {showGrill ? (
+        <button type="button" className={btn} disabled={!seated} onPointerDown={onGrill}>
+          고기 굽기
+        </button>
+      ) : null}
       <button type="button" className={btn} disabled={!seated} onPointerDown={onToast}>
-        건배
+        건배 짠!
       </button>
       <button type="button" className={btn} disabled={!seated} onPointerDown={onPour}>
         따르기
