@@ -258,7 +258,7 @@ export default function ChannelRoomPage() {
           <h1 className="text-lg font-semibold text-amber-50">{channelDef.name}</h1>
           <p className="mt-1 max-w-sm text-xs leading-5 text-amber-100/70">{room.stageMessage}</p>
           <p className="mt-2 text-[11px] text-amber-200/70">
-            이동: WASD / 바닥 클릭 · 앉기: 의자 · 때리기: 캐릭터 클릭 · 채팅창으로 대화
+            이동: WASD / 바닥 클릭 · 스크롤: 줌 · 앉으면 드래그로 둘러보기 · 때리기: 캐릭터 클릭
           </p>
           {myOrders.length > 0 ? (
             <ul className="mt-2 space-y-1 text-[11px] text-amber-100/75">

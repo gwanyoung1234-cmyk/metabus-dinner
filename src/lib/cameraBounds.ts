@@ -15,12 +15,12 @@ export type MoveBounds = {
 };
 
 export const BOOR_CAM_BOUNDS: CamBounds = {
-  minX: -13.8,
-  maxX: 13.8,
-  minZ: -11.8,
-  maxZ: 9.2,
-  minY: 1.6,
-  maxY: 5.2,
+  minX: -14.2,
+  maxX: 14.2,
+  minZ: -12.0,
+  maxZ: 9.5,
+  minY: 1.5,
+  maxY: 5.6,
 };
 
 export const BOOR_MOVE_BOUNDS: MoveBounds = {

@@ -21,8 +21,10 @@ const ARRIVE = 0.18;
 const CAM_DIST = 5.8;
 const CAM_HEIGHT = 3.4;
 const CAM_LOOK_Y = 1.15;
-const SEAT_CAM_DIST = 2.6;
-const SEAT_CAM_HEIGHT = 2.4;
+const SEAT_CAM_DIST = 3.0;
+const SEAT_CAM_HEIGHT = 2.5;
+const ZOOM_MIN = 0.55;
+const ZOOM_MAX = 1.75;
 
 function floorY(z: number) {
   return z < -3.7 ? RAISED_PLATFORM_Y : 0;
@@ -38,12 +40,14 @@ function lerpAngle(from: number, to: number, t: number) {
 function FloorClickPads({
   onFloorClick,
   moveBounds,
+  enabled,
 }: {
   onFloorClick: (x: number, z: number) => void;
   moveBounds: MoveBounds;
+  enabled: boolean;
 }) {
   const handle = (event: ThreeEvent<PointerEvent>) => {
-    if (event.button !== 0) return;
+    if (!enabled || event.button !== 0) return;
     event.stopPropagation();
     onFloorClick(event.point.x, event.point.z);
   };
@@ -54,14 +58,25 @@ function FloorClickPads({
   const cz = (moveBounds.minZ + moveBounds.maxZ) / 2;
 
   return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[cx, 0.03, cz]}
-      onPointerDown={handle}
-    >
-      <planeGeometry args={[width, depth]} />
-      <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-    </mesh>
+    <>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[cx, 0.03, cz]}
+        onPointerDown={handle}
+      >
+        <planeGeometry args={[width, depth]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {/* Boor raised rear platform click surface */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, RAISED_PLATFORM_Y + 0.04, -8.4]}
+        onPointerDown={handle}
+      >
+        <planeGeometry args={[28, 9.2]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </>
   );
 }
 
@@ -98,6 +113,11 @@ export function LocalPlayer({
   const pose = useRef({ x, z, rotationY });
   const camYaw = useRef(rotationY);
   const look = useRef({ x, y: CAM_LOOK_Y, z });
+  const zoom = useRef(1);
+  const seatOrbitYaw = useRef(0);
+  const seatOrbitPitch = useRef(0.18);
+  const dragging = useRef(false);
+  const lastPointer = useRef({ x: 0, y: 0 });
   const lastSent = useRef(0);
   const movingRef = useRef(false);
   const wasSeated = useRef(seated);
@@ -110,11 +130,14 @@ export function LocalPlayer({
         rotationY: seatRotationY,
       };
       camYaw.current = seatRotationY;
+      seatOrbitYaw.current = 0;
+      seatOrbitPitch.current = 0.18;
       mouseGoal.current = null;
       movingRef.current = false;
     } else if (wasSeated.current && !seated) {
       pose.current = { x, z, rotationY };
       camYaw.current = rotationY;
+      dragging.current = false;
     }
     wasSeated.current = seated;
   }, [seated, seatPosition, seatRotationY, x, z, rotationY]);
@@ -140,21 +163,61 @@ export function LocalPlayer({
       if (key === "a" || key === "arrowleft") keys.current.a = false;
       if (key === "d" || key === "arrowright") keys.current.d = false;
     };
+
+    const onWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, button, form")) return;
+      event.preventDefault();
+      const next = zoom.current + (event.deltaY > 0 ? 0.08 : -0.08);
+      zoom.current = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, button, form, a")) return;
+      // Seated: drag to look around. Standing: still allow floor click-to-move.
+      if (wasSeated.current || seated) {
+        dragging.current = true;
+        lastPointer.current = { x: event.clientX, y: event.clientY };
+      }
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragging.current) return;
+      const dx = event.clientX - lastPointer.current.x;
+      const dy = event.clientY - lastPointer.current.y;
+      lastPointer.current = { x: event.clientX, y: event.clientY };
+      seatOrbitYaw.current -= dx * 0.005;
+      seatOrbitPitch.current = Math.min(
+        0.85,
+        Math.max(-0.15, seatOrbitPitch.current + dy * 0.004),
+      );
+    };
+    const onPointerUp = () => {
+      dragging.current = false;
+    };
+
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
     };
-  }, []);
+  }, [seated]);
 
   function onFloorClick(gx: number, gz: number) {
+    if (seated) return; // seated uses mouse to look, not walk
     const tx = Math.min(moveBounds.maxX, Math.max(moveBounds.minX, gx));
     const tz = Math.min(moveBounds.maxZ, Math.max(moveBounds.minZ, gz));
     mouseGoal.current = { x: tx, z: tz };
-    if (seated) {
-      getSocket().emit("leaveSeat");
-    }
   }
 
   useFrame((state, delta) => {
@@ -163,26 +226,34 @@ export function LocalPlayer({
     const dt = Math.min(delta, 0.05);
     const follow = 1 - Math.exp(-3.4 * dt);
     const yawFollow = 1 - Math.exp(-2.2 * dt);
+    const zMul = zoom.current;
 
     if (seated && seatPosition) {
       mouseGoal.current = null;
       root.current.position.set(seatPosition[0], seatPosition[1] + 0.42, seatPosition[2]);
       root.current.rotation.y = seatRotationY;
 
-      const faceX = Math.sin(seatRotationY);
-      const faceZ = Math.cos(seatRotationY);
+      const orbitYaw = seatRotationY + seatOrbitYaw.current;
+      const pitch = seatOrbitPitch.current;
+      const dist = SEAT_CAM_DIST * zMul;
+      const height = SEAT_CAM_HEIGHT + pitch * 2.2;
       const fitted = fitCameraBehind(
         seatPosition[0],
         seatPosition[1],
         seatPosition[2],
-        seatRotationY,
-        SEAT_CAM_DIST,
-        SEAT_CAM_HEIGHT,
+        orbitYaw,
+        dist,
+        height,
         camBounds,
       );
-      const lookX = seatPosition[0] + faceX * 0.85;
-      const lookY = seatPosition[1] + 1.1;
-      const lookZ = seatPosition[2] + faceZ * 0.85;
+
+      // Look toward a point in front of the seat, tilted by pitch.
+      const lookDist = 1.4;
+      const lookX =
+        seatPosition[0] + Math.sin(orbitYaw) * lookDist * Math.cos(pitch * 0.8);
+      const lookY = seatPosition[1] + 1.2 + pitch * 0.6;
+      const lookZ =
+        seatPosition[2] + Math.cos(orbitYaw) * lookDist * Math.cos(pitch * 0.8);
 
       camera.position.x += (fitted.x - camera.position.x) * follow;
       camera.position.y += (fitted.y - camera.position.y) * follow;
@@ -256,8 +327,8 @@ export function LocalPlayer({
       y,
       pose.current.z,
       camYaw.current,
-      CAM_DIST,
-      CAM_HEIGHT,
+      CAM_DIST * zMul,
+      CAM_HEIGHT * (0.85 + zMul * 0.15),
       camBounds,
     );
 
@@ -272,7 +343,11 @@ export function LocalPlayer({
 
   return (
     <>
-      <FloorClickPads onFloorClick={onFloorClick} moveBounds={moveBounds} />
+      <FloorClickPads
+        onFloorClick={onFloorClick}
+        moveBounds={moveBounds}
+        enabled={!seated}
+      />
       <group ref={root}>
         <Avatar
           name={name}

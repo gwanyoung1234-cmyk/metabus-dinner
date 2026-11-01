@@ -8,7 +8,7 @@ import { HALL_LAYOUT, type TableDef } from "@/lib/seats";
 import type { DeliveryState } from "@/types/presence";
 import { NamePlate } from "./NamePlate";
 
-const DEFAULT_KITCHEN: [number, number, number] = [11.5, 0, 6.8];
+const DEFAULT_KITCHEN: [number, number, number] = [10.5, 0, 6.5];
 const DELIVERY_SECONDS = 4.2;
 
 export function WaiterNpc({

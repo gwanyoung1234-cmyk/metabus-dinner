@@ -262,7 +262,12 @@ export function DinnerHall({
             speech={speechById?.[me.id] ?? null}
           />
         ) : null}
-        <WaiterNpc delivery={delivery} name="알바생" />
+        <WaiterNpc
+          delivery={delivery}
+          name="알바생"
+          kitchen={[10.5, 0, 6.5]}
+          tables={HALL_LAYOUT.tables}
+        />
       </Suspense>
     </Canvas>
   );
